@@ -26,9 +26,11 @@ season_buttons = InlineKeyboardMarkup(
 difficulty_buttons = InlineKeyboardMarkup(
     inline_keyboard=[
         [
-            InlineKeyboardButton(text="easy", callback_data="diff_easy"),
-            InlineKeyboardButton(text="moderate", callback_data="diff_moderate"),
-            InlineKeyboardButton(text="hard", callback_data="diff_hard"),
+            InlineKeyboardButton(text="Легко", callback_data="diff_легко"),
+            InlineKeyboardButton(text="Сложно", callback_data="diff_сложно"),
+        ],
+        [
+            InlineKeyboardButton(text="Варьируется", callback_data="diff_варьируется"),
         ]
     ]
 )
@@ -36,13 +38,13 @@ difficulty_buttons = InlineKeyboardMarkup(
 transport_buttons = InlineKeyboardMarkup(
     inline_keyboard=[
         [
-            InlineKeyboardButton(text="car", callback_data="trans_car"),
+            InlineKeyboardButton(text="Машина", callback_data="trans_машина"),
             InlineKeyboardButton(text="4x4", callback_data="trans_4x4"),
-            InlineKeyboardButton(text="minibus", callback_data="trans_minibus"),
+            InlineKeyboardButton(text="Маршрутка", callback_data="trans_маршрутка"),
         ],
         [
-            InlineKeyboardButton(text="boat", callback_data="trans_boat"),
-            InlineKeyboardButton(text="on_foot", callback_data="trans_on_foot"),
+            InlineKeyboardButton(text="Лодка", callback_data="trans_лодка"),
+            InlineKeyboardButton(text="Пешком", callback_data="trans_пешком"),
         ],
     ]
 )
@@ -50,22 +52,43 @@ transport_buttons = InlineKeyboardMarkup(
 tags_buttons = InlineKeyboardMarkup(
     inline_keyboard=[
         [
-            InlineKeyboardButton(text="nature", callback_data="tag_nature"),
-            InlineKeyboardButton(text="adventure", callback_data="tag_adventure"),
-            InlineKeyboardButton(text="family", callback_data="tag_family"),
+            InlineKeyboardButton(text="Природа", callback_data="tag_природа"),
+            InlineKeyboardButton(text="Приключение", callback_data="tag_приключение"),
+            InlineKeyboardButton(text="Семейное", callback_data="tag_семейное"),
         ],
         [
-            InlineKeyboardButton(text="trekking", callback_data="tag_trekking"),
-            InlineKeyboardButton(text="culture", callback_data="tag_culture"),
-            InlineKeyboardButton(text="city", callback_data="tag_city"),
+            InlineKeyboardButton(text="Походы", callback_data="tag_походы"),
+            InlineKeyboardButton(text="Культура", callback_data="tag_культура"),
+            InlineKeyboardButton(text="Город", callback_data="tag_город"),
         ],
         [
-            InlineKeyboardButton(text="history", callback_data="tag_history"),
-            InlineKeyboardButton(text="food", callback_data="tag_food"),
-            InlineKeyboardButton(text="hiking", callback_data="tag_hiking"),
+            InlineKeyboardButton(text="История", callback_data="tag_история"),
+            InlineKeyboardButton(text="Еда", callback_data="tag_еда"),
+            InlineKeyboardButton(text="Прогулки", callback_data="tag_прогулки"),
         ],
         [
             InlineKeyboardButton(text="Готово", callback_data="tags_done"),
         ],
+    ]
+)
+
+def get_preferences_keyboard():
+    """Клавиатура для управления предпочтениями"""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🔄 Сбросить все предпочтения", callback_data="reset_prefs")
+            ]
+        ]
+    )
+
+# Клавиатура для сброса предпочтений при начале новой настройки
+reset_choice_keyboard = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="Сбросить и начать заново", callback_data="reset_and_start"),
+        ],
+        [
+            InlineKeyboardButton(text="Продолжить с текущими", callback_data="continue_current"),        ]
     ]
 )

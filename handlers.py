@@ -14,6 +14,8 @@ from utils import (
     difficulty_buttons,
     transport_buttons,
     tags_buttons,
+    reset_choice_keyboard,
+    get_preferences_keyboard,
 )
 
 logger = logging.getLogger(__name__)
@@ -54,8 +56,112 @@ async def cmd_start(message: types.Message):
     await message.answer("Привет! Выберите действие:", reply_markup=main_menu)
 
 
+@router.message(lambda m: m.text == "Посмотреть предпочтения")
+async def view_preferences(message: types.Message):
+    async with AsyncSessionLocal() as session:
+        q = await session.execute(select_user_by_tg(session, message.from_user.id))
+        user = q.scalars().first()
+
+        if not user:
+            await message.answer(
+                "У вас ещё нет предпочтений. Сначала установите их через кнопку 'Установить предпочтения'.",
+                reply_markup=main_menu)
+            return
+
+        prefs = json.loads(user.preferences) if user.preferences else {}
+
+        if not prefs:
+            await message.answer(
+                "У вас ещё нет предпочтений. Сначала установите их через кнопку 'Установить предпочтения'.",
+                reply_markup=main_menu)
+            return
+
+        # Форматируем предпочтения в читаемый вид
+        prefs_text = "📋 <b>Ваши текущие предпочтения:</b>\n\n"
+
+        # Сезон
+        if prefs.get("season"):
+            if prefs['season'] == "winter":
+                prefs_text += f"<b>Сезон:</b> зима\n"
+            elif prefs['season'] == "spring":
+                prefs_text += f"<b>Сезон:</b> весна\n"
+            elif prefs['season'] == "summer":
+                prefs_text += f"<b>Сезон:</b> лето\n"
+            else:
+                prefs_text += f"<b>Сезон:</b> осень\n"
+        else:
+            prefs_text += "<b>Сезон:</b> не установлен\n"
+
+        # Длина маршрута
+        if prefs.get("length_km"):
+            prefs_text += f"<b>Длина маршрута:</b> {prefs['length_km']} км\n"
+        else:
+            prefs_text += "<b>Длина маршрута:</b> не установлена\n"
+
+        # Цена
+        if prefs.get("price_estimate"):
+            prefs_text += f"<b>Цена:</b> {prefs['price_estimate']} руб\n"
+        else:
+            prefs_text += "<b>Цена:</b> не установлена\n"
+
+        # Сложность
+        if prefs.get("difficulty"):
+            prefs_text += f"<b>Сложность:</b> {prefs['difficulty']}\n"
+        else:
+            prefs_text += "<b>Сложность:</b> не установлена\n"
+
+        # Популярность
+        if prefs.get("popularity"):
+            prefs_text += f"<b>Популярность:</b> {prefs['popularity']}/100\n"
+        else:
+            prefs_text += "<b>Популярность:</b> не установлена\n"
+
+        # Транспорт
+        if prefs.get("transport"):
+            prefs_text += f"<b>Транспорт:</b> {prefs['transport']}\n"
+        else:
+            prefs_text += "<b>Транспорт:</b> не установлен\n"
+
+        # Теги
+        if prefs.get("tags"):
+            tags_str = ", ".join(prefs['tags'])
+            prefs_text += f"<b>Теги:</b> {tags_str}\n"
+        else:
+            prefs_text += "<b>Теги:</b> не установлены\n"
+
+        # Статус настройки (если в процессе)
+        if prefs.get("prefs_step"):
+            steps = {
+                "length_km": "ожидание ввода длины маршрута",
+                "price_estimate": "ожидание ввода цены",
+                "difficulty": "ожидание выбора сложности",
+                "popularity": "ожидание ввода популярности",
+                "transport": "ожидание выбора транспорта",
+                "tags": "ожидание выбора тегов"
+            }
+            prefs_text += f"\n⏳ <i>Процесс настройки: {steps.get(prefs['prefs_step'], prefs['prefs_step'])}</i>"
+
+        # Отправляем сообщение с кнопкой сброса
+        from utils import get_preferences_keyboard  # импортируем вверху файла
+        await message.answer(prefs_text, reply_markup=get_preferences_keyboard())
+
+
 @router.message(lambda m: m.text == "Установить предпочтения")
 async def ask_season(message: types.Message):
+    # Спрашиваем, хочет ли пользователь сбросить текущие предпочтения
+    async with AsyncSessionLocal() as session:
+        q = await session.execute(select_user_by_tg(session, message.from_user.id))
+        user = q.scalars().first()
+
+        if user and user.preferences and user.preferences != "{}":
+            await message.answer(
+                "⚠️ У вас уже есть сохранённые предпочтения.\n"
+                "Хотите сбросить их и начать заново или продолжить настройку с текущими?",
+                reply_markup=reset_choice_keyboard  # Используем клавиатуру из utils.py
+            )
+            return
+
+    # Если предпочтений нет или они пустые, сразу переходим к выбору сезона
     await message.answer("Выберите сезон:", reply_markup=season_buttons)
 
 
@@ -242,3 +348,83 @@ async def tags_done(callback: types.CallbackQuery):
 
     await callback.message.answer("Теги сохранены!\nНажмите «Найти маршруты» чтобы получить рекомендации.", reply_markup=main_menu)
     await callback.answer()
+
+
+@router.callback_query(lambda c: c.data == "reset_and_start")
+async def reset_and_start(callback: types.CallbackQuery):
+    # Сбрасываем предпочтения
+    async with AsyncSessionLocal() as session:
+        q = await session.execute(select_user_by_tg(session, callback.from_user.id))
+        user = q.scalars().first()
+        if user:
+            user.preferences = "{}"
+            session.add(user)
+            await session.commit()
+
+    # Начинаем новую настройку
+    await callback.message.edit_text("Предпочтения сброшены. Выберите сезон:", reply_markup=season_buttons)
+    await callback.answer()
+
+
+@router.callback_query(lambda c: c.data == "continue_current")
+async def continue_current(callback: types.CallbackQuery):
+    # Продолжаем с текущими предпочтениями
+    async with AsyncSessionLocal() as session:
+        q = await session.execute(select_user_by_tg(session, callback.from_user.id))
+        user = q.scalars().first()
+
+        if user and user.preferences:
+            prefs = json.loads(user.preferences)
+            # Определяем текущий шаг
+            current_step = prefs.get("prefs_step")
+
+            if not current_step:
+                # Если настройка была завершена, начинаем заново с выбора сезона
+                await callback.message.edit_text("Выберите сезон:", reply_markup=season_buttons)
+            else:
+                # Если настройка прервана, продолжаем с того же шага
+                steps = {
+                    "length_km": "Введите желаемую длину маршрута (км):",
+                    "price_estimate": "Введите желаемую цену (руб):",
+                    "difficulty": "Выберите сложность:",
+                    "popularity": "Введите желаемую популярность (0–100):",
+                    "transport": "Выберите транспорт:",
+                    "tags": "Выберите предпочитаемые теги (можно несколько):"
+                }
+
+                message_text = f"Продолжаем настройку. {steps.get(current_step, 'Выберите сезон:')}"
+
+                if current_step == "difficulty":
+                    await callback.message.edit_text(message_text, reply_markup=difficulty_buttons)
+                elif current_step == "transport":
+                    await callback.message.edit_text(message_text, reply_markup=transport_buttons)
+                elif current_step == "tags":
+                    await callback.message.edit_text(message_text, reply_markup=tags_buttons)
+                else:
+                    await callback.message.edit_text(message_text)
+        else:
+            await callback.message.edit_text("Выберите сезон:", reply_markup=season_buttons)
+
+    await callback.answer()
+
+@router.callback_query(lambda c: c.data == "reset_prefs")
+async def reset_preferences(callback: types.CallbackQuery):
+    async with AsyncSessionLocal() as session:
+        q = await session.execute(select_user_by_tg(session, callback.from_user.id))
+        user = q.scalars().first()
+
+        if not user:
+            await callback.answer("У вас нет сохранённых предпочтений.")
+            return
+
+        # Сбрасываем предпочтения
+        user.preferences = "{}"  # пустой JSON
+        session.add(user)
+        await session.commit()
+
+        logger.info("User %s reset preferences", callback.from_user.id)
+
+        await callback.message.edit_text(
+            "✅ Все предпочтения успешно сброшены!\n\nВы можете установить новые предпочтения через кнопку 'Установить предпочтения'.",
+            reply_markup=None)
+        await callback.answer()

@@ -15,7 +15,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # set token via env or hardcode (not recommended to hardcode in production)
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8169988545:AAEk8jMumU9Lt2r4eXAn_iCp-4hSZe5YkLs")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "здесь был токен")
 if not BOT_TOKEN:
     logger.error("BOT_TOKEN not provided. Set environment variable BOT_TOKEN.")
     raise SystemExit(1)
