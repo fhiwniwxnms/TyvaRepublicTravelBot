@@ -254,17 +254,42 @@ async def collect_prefs(message: types.Message):
             for r in recs:
                 route = r["route"]
                 score = r["score"]
+                
+                # Формируем строку со ссылкой
+                link_text = ""
+                link = route.get('link')
+                
+                if link:
+                    if isinstance(link, list) and len(link) > 0:
+                        # Берем первую ссылку из списка
+                        actual_link = link[0]
+                        # Проверяем, есть ли http/https в начале ссылки
+                        if not actual_link.startswith(('http://', 'https://')):
+                            actual_link = 'https://' + actual_link
+                        link_text = f"\n🔗 <a href='{actual_link}'>Подробнее о маршруте</a>"
+                    elif isinstance(link, str) and link.strip():
+                        actual_link = link.strip()
+                        if not actual_link.startswith(('http://', 'https://')):
+                            actual_link = 'https://' + actual_link
+                        link_text = f"\n🔗 <a href='{actual_link}'>Подробнее о маршруте</a>"
+                
                 logs.append(f"➤{route['title']} \n📎 <i>score {score}</i>")
-                await message.answer(
+                
+                # Формируем основное сообщение
+                message_text = (
                     f"🏔️<b>{route['title']}</b> (score: {score})\n\n"
                     f"<i>{route.get('description')}</i>\n\n"
-                    f"Длина: {route.get('length_km')} км\n"
-                    f"Сложность: {route.get('difficulty')}\n"
-                    f"Цена: {route.get('price_estimate')}\n"
-                    f"Теги: {', '.join(route.get('tags', []))}"
+                    f"📏 Длина: {route.get('length_km')} км\n"
+                    f"⚡ Сложность: {route.get('difficulty')}\n"
+                    f"💰 Цена: {route.get('price_estimate')}\n"
+                    f"🏷️ Теги: {', '.join(route.get('tags', []))}"
+                    f"{link_text}"
                 )
+                
+                await message.answer(message_text, parse_mode='HTML', disable_web_page_preview=False)
+            
             # send simple log summary
-            await message.answer("🗺️ <b>ТОП МАРШРУТОВ</b> 🗺️\n\n" + "\n".join(logs))
+            await message.answer("🗺️ <b>ТОП МАРШРУТОВ</b> 🗺️\n\n" + "\n".join(logs), parse_mode='HTML')
             return
 
         # catch-all
