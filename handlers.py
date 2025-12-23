@@ -254,44 +254,58 @@ async def collect_prefs(message: types.Message):
             for r in recs:
                 route = r["route"]
                 score = r["score"]
-                
-                # Формируем строку со ссылкой
                 link_text = ""
                 link = route.get('link')
                 
-                if link:
-                    if isinstance(link, list) and len(link) > 0:
-                        # Берем первую ссылку из списка
-                        actual_link = link[0]
-                        # Проверяем, есть ли http/https в начале ссылки
-                        if not actual_link.startswith(('http://', 'https://')):
-                            actual_link = 'https://' + actual_link
-                        link_text = f"\n🔗 <a href='{actual_link}'>Подробнее о маршруте</a>"
-                    elif isinstance(link, str) and link.strip():
-                        actual_link = link.strip()
-                        if not actual_link.startswith(('http://', 'https://')):
-                            actual_link = 'https://' + actual_link
-                        link_text = f"\n🔗 <a href='{actual_link}'>Подробнее о маршруте</a>"
+                # Проверяем, есть ли ссылка (не None и не пустая строка)
+                if link and isinstance(link, str) and link.strip() and link.lower() != 'null':
+                    actual_link = link.strip()
+                    # Проверяем, есть ли http/https в начале ссылки
+                    if not actual_link.startswith(('http://', 'https://')):
+                        actual_link = 'https://' + actual_link
+                    link_text = f"\n\n📍 <a href='{actual_link}'>Посмотреть на Яндекс.Картах</a>"
                 
-                logs.append(f"➤{route['title']} \n📎 <i>score {score}</i>")
+                logs.append(f"➤ {route['title']} \n📎 <i>score {score:.1f}</i>")
                 
-                # Формируем основное сообщение
+                # Формируем основное сообщение с безопасными значениями
+                title = route.get('title', 'Без названия')
+                description = route.get('description', 'Описание отсутствует')
+                length = route.get('length_km', '?')
+                difficulty = route.get('difficulty', 'не указана')
+                price = route.get('price_estimate', '?')
+                tags = route.get('tags', [])
+                tags_text = ', '.join(tags) if tags else 'нет тегов'
+                
+                # Формируем сообщение
                 message_text = (
-                    f"🏔️<b>{route['title']}</b> (score: {score})\n\n"
-                    f"<i>{route.get('description')}</i>\n\n"
-                    f"📏 Длина: {route.get('length_km')} км\n"
-                    f"⚡ Сложность: {route.get('difficulty')}\n"
-                    f"💰 Цена: {route.get('price_estimate')}\n"
-                    f"🏷️ Теги: {', '.join(route.get('tags', []))}"
+                    f"🏔️ <b>{title}</b> (score: {score:.1f})\n\n"
+                    f"<i>{description}</i>\n\n"
+                    f"Длина: {length} км\n"
+                    f"Сложность: {difficulty}\n"
+                    f"Цена: {price} руб.\n"
+                    f"Теги: {tags_text}"
                     f"{link_text}"
                 )
                 
-                await message.answer(message_text, parse_mode='HTML', disable_web_page_preview=False)
-            
-            # send simple log summary
-            await message.answer("🗺️ <b>ТОП МАРШРУТОВ</b> 🗺️\n\n" + "\n".join(logs), parse_mode='HTML')
-            return
-
+                try:
+                    await message.answer(message_text, parse_mode='HTML', disable_web_page_preview=True)
+                except Exception as e:
+                    logger.error(f"Ошибка при отправке сообщения: {e}")
+                    # Пробуем отправить без HTML (на случай проблем со ссылкой)
+                    fallback_text = (
+                        f"🏔️ {title} (score: {score:.1f})\n\n"
+                        f"{description}\n\n"
+                        f"Длина: {length} км\n"
+                        f"Сложность: {difficulty}\n"
+                        f"Цена: {price} руб.\n"
+                        f"Теги: {tags_text}"
+                    )
+                    if link and isinstance(link, str) and link.strip() and link.lower() != 'null':
+                        fallback_text += f"\n\nСсылка: {link.strip()}"
+                    await message.answer(fallback_text)
+                        # send simple log summary
+                    await message.answer("🗺️ <b>ТОП МАРШРУТОВ</b> 🗺️\n\n" + "\n".join(logs), parse_mode='HTML')
+                    return
         # catch-all
         # if user typed something unrelated, show the main menu
         await message.answer("Нажмите пожалуйста одну из кнопок меню 👇🏼:", reply_markup=main_menu)

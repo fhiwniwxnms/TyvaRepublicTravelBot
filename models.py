@@ -43,6 +43,7 @@ class Route(Base):
     length_km = Column(Float, nullable=True)
     difficulty = Column(String, nullable=True)
     price_estimate = Column(Float, nullable=True)
+    link = Column(String, nullable=True)  # ДОБАВЛЕНО: поле для ссылки
     popularity = Column(Integer, default=0)
 
     def to_dict(self):
@@ -53,5 +54,6 @@ class Route(Base):
             "length_km": self.length_km,
             "difficulty": self.difficulty,
             "price_estimate": self.price_estimate,
+            "link": self.link,  # ДОБАВЛЕНО: возвращаем ссылку
             "popularity": self.popularity,
         }
