@@ -97,6 +97,11 @@ def score_route(route_row: Dict[str, Any], prefs: Dict[str, Any], current_season
         score += add
         debug.append(f"tags_overlap_ratio({overlap_ratio:.2f})(+{add:.2f})")
 
+    # ДОБАВЛЕНО: Бонус за наличие ссылки
+    if route_row.get("link"):
+        score += 0.5
+        debug.append("has_link(+0.5)")
+
     # small normalization summary
     logger.debug("SCORE DEBUG for '%s' : score=%.3f | %s", route_row.get("title"), score, "; ".join(debug))
     # also return numeric score
