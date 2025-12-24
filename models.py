@@ -1,10 +1,8 @@
-# models.py
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import Table, Column, Integer, String, Text, Float, ForeignKey
 
 Base = declarative_base()
 
-# association tables
 route_tags = Table(
     "route_tags",
     Base.metadata,
@@ -32,7 +30,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     tg_id = Column(Integer, unique=True, index=True, nullable=False)
     name = Column(String, nullable=True)
-    preferences = Column(Text, nullable=True)  # JSON string
+    preferences = Column(Text, nullable=True)
 
 
 class Route(Base):
@@ -43,7 +41,7 @@ class Route(Base):
     length_km = Column(Float, nullable=True)
     difficulty = Column(String, nullable=True)
     price_estimate = Column(Float, nullable=True)
-    link = Column(String, nullable=True)  # ДОБАВЛЕНО: поле для ссылки
+    link = Column(String, nullable=True)
     popularity = Column(Integer, default=0)
 
     def to_dict(self):
@@ -54,6 +52,6 @@ class Route(Base):
             "length_km": self.length_km,
             "difficulty": self.difficulty,
             "price_estimate": self.price_estimate,
-            "link": self.link,  # ДОБАВЛЕНО: возвращаем ссылку
+            "link": self.link,
             "popularity": self.popularity,
         }

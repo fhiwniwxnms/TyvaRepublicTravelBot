@@ -1,4 +1,3 @@
-# db.py - обновляем с реальными ссылками
 import os
 import json
 import logging
@@ -7,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select, func
 from models import Base, Route, route_tags, route_seasons, route_transports
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./tuva_travel.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./tuva_travel (2).db")
 logger = logging.getLogger(__name__)
 
 engine = create_async_engine(DATABASE_URL, echo=False, future=True)
@@ -25,8 +24,7 @@ async def init_db_and_seed():
         logger.info("Routes in DB: %s", count)
         if count == 0:
             logger.info("Seeding sample routes...")
-            
-            # Обновленные данные с реальными ссылками из скриншота
+
             sample_routes = [
                 {
                     "title": "Кызыл — озеро Дьенгек",
@@ -35,7 +33,7 @@ async def init_db_and_seed():
                     "difficulty": "легко",
                     "price_estimate": 8500.0,
                     "popularity": 50,
-                    "link": "https://yandex.ru/maps/-/CLD~4Lnt",  # Ссылка из таблицы
+                    "link": "https://yandex.ru/maps/-/CLD~4Lnt",
                     "tags": ["nature", "family", "hiking"],
                     "seasons": ["summer", "autumn"],
                     "transports": ["car", "minibus"]
@@ -47,7 +45,7 @@ async def init_db_and_seed():
                     "difficulty": "варьируется",
                     "price_estimate": 10000.0,
                     "popularity": 30,
-                    "link": "https://yandex.ru/maps/-/CLD~eImu",  # Ссылка из таблицы
+                    "link": "https://yandex.ru/maps/-/CLD~eImu",
                     "tags": ["adventure", "trekking", "nature"],
                     "seasons": ["summer"],
                     "transports": ["car"]
@@ -59,7 +57,7 @@ async def init_db_and_seed():
                     "difficulty": "легко",
                     "price_estimate": 8000.0,
                     "popularity": 80,
-                    "link": None,  # NULL в таблице
+                    "link": None,
                     "tags": ["culture", "food", "family"],
                     "seasons": ["spring", "summer", "autumn"],
                     "transports": ["car", "minibus"]
@@ -167,7 +165,7 @@ async def init_db_and_seed():
                     "difficulty": "сложно",
                     "price_estimate": 18000.0,
                     "popularity": 45,
-                    "link": "https://yandex.ru/maps/-/CLDxbW4~",  # Убрал лишнюю кавычку
+                    "link": "https://yandex.ru/maps/-/CLDxbW4~",
                     "tags": ["rafting", "adventure", "sport"],
                     "seasons": ["summer"],
                     "transports": ["car", "boat"]
@@ -251,7 +249,7 @@ async def init_db_and_seed():
                     "difficulty": "легко",
                     "price_estimate": 900.0,
                     "popularity": 65,
-                    "link": "https://yandex.ru/maps/-/CLDxjHM~",  # Убрал лишнюю кавычку
+                    "link": "https://yandex.ru/maps/-/CLDxjHM~",
                     "tags": ["nature", "waterfalls", "hiking"],
                     "seasons": ["summer"],
                     "transports": ["on_foot"]
@@ -337,7 +335,7 @@ async def init_db_and_seed():
                     length_km=r.get("length_km"),
                     difficulty=r.get("difficulty"),
                     price_estimate=r.get("price_estimate"),
-                    link=r.get("link"),  # Добавляем ссылку
+                    link=r.get("link"),
                     popularity=r.get("popularity", 0),
                 )
                 session.add(route)
