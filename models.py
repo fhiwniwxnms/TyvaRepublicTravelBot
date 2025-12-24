@@ -1,5 +1,6 @@
+from datetime import datetime
 from sqlalchemy.orm import declarative_base
-from sqlalchemy import Table, Column, Integer, String, Text, Float, ForeignKey, UniqueConstraint
+from sqlalchemy import Table, Column, Integer, String, Text, Float, ForeignKey, UniqueConstraint, DateTime
 
 Base = declarative_base()
 
@@ -63,5 +64,14 @@ class Favorite(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     route_id = Column(Integer, ForeignKey("routes.id"), nullable=False)
 
-    # Уникальная пара user_id + route_id
     __table_args__ = (UniqueConstraint('user_id', 'route_id', name='unique_user_route'),)
+
+
+class CompletedRoute(Base):
+    __tablename__ = "completed_routes"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    route_id = Column(Integer, ForeignKey("routes.id"), nullable=False)
+    completed_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint('user_id', 'route_id', name='unique_user_completed_route'),)

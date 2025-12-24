@@ -1,13 +1,39 @@
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 
-main_menu = ReplyKeyboardMarkup(
-    keyboard=[
-        [KeyboardButton(text="Установить предпочтения")],
-        [KeyboardButton(text="Посмотреть предпочтения")],
-        [KeyboardButton(text="Найти маршруты")],
-        [KeyboardButton(text="Мои маршруты")],
-    ],
-    resize_keyboard=True,
+main_menu = ReplyKeyboardRemove()
+
+
+inline_main_menu = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🎯 Установить предпочтения", callback_data="set_prefs"),
+        ],
+        [
+            InlineKeyboardButton(text="👁 Посмотреть предпочтения", callback_data="view_prefs"),
+        ],
+        [
+            InlineKeyboardButton(text="🔍 Найти маршруты", callback_data="find_routes"),
+            InlineKeyboardButton(text="❤️ Мои маршруты", callback_data="my_routes"),
+        ],
+        [
+            InlineKeyboardButton(text="📊 Статистика", callback_data="show_stats"),
+            InlineKeyboardButton(text="ℹ️ Помощь", callback_data="help"),
+        ]
+    ]
+)
+
+
+back_to_main_menu = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
+    ]
+)
+
+stats_with_details = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [InlineKeyboardButton(text="📖 Узнать о маршрутах подробнее", callback_data="stats_details_all")],
+        [InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]
+    ]
 )
 
 season_buttons = InlineKeyboardMarkup(
@@ -79,6 +105,9 @@ def get_preferences_keyboard():
         inline_keyboard=[
             [
                 InlineKeyboardButton(text="🔄 Сбросить все предпочтения", callback_data="reset_prefs")
+            ],
+            [
+                InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")
             ]
         ]
     )
@@ -89,7 +118,10 @@ reset_choice_keyboard = InlineKeyboardMarkup(
             InlineKeyboardButton(text="🔄 Сбросить и начать заново", callback_data="reset_and_start"),
         ],
         [
-            InlineKeyboardButton(text="✅ Продолжить с текущими", callback_data="continue_current"),        ]
+            InlineKeyboardButton(text="✅ Продолжить с текущими", callback_data="continue_current"),
+        ],
+        [
+            InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")
+        ]
     ]
 )
-
