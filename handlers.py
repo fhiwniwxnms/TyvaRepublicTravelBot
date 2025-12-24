@@ -3,6 +3,9 @@ import logging
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.filters import Command
 from aiogram.client.default import DefaultBotProperties
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from sqlalchemy import select, delete
+from models import Favorite, route_transports, route_seasons, route_tags, Route
 
 from db import AsyncSessionLocal
 from models import User
@@ -54,6 +57,103 @@ async def cmd_start(message: types.Message):
         "Привет❕ \nМы рады помочь вам увидеть всю красоту <b> Республики Тывы </b>❕🏔️🤍 \n\nРасскажите нам чего бы вам хотелось❔ \nНажмите <i>'Установить предпочтения'</i>.",
         reply_markup=main_menu)
 
+
+@router.message(lambda m: m.text == "Мои маршруты")
+async def my_routes(message: types.Message):
+    async with AsyncSessionLocal() as session:
+        # Получаем пользователя
+        q = await session.execute(select_user_by_tg(session, message.from_user.id))
+        user = q.scalars().first()
+
+        if not user:
+            await message.answer("Пользователь не найден.")
+            return
+
+        # Получаем избранные маршруты
+        favorites_q = await session.execute(
+            select(Favorite).where(Favorite.user_id == user.id)
+        )
+        favorites = favorites_q.scalars().all()
+
+        if not favorites:
+            await message.answer(
+                "У вас пока нет сохранённых маршрутов.\n\n"
+                "Чтобы добавить маршрут в избранное, найдите маршруты через кнопку "
+                "<i>'Найти маршруты'</i> и нажмите на кнопку ❤️ под понравившимся маршрутом.",
+                reply_markup=main_menu
+            )
+            return
+
+        # Получаем информацию о каждом маршруте
+        route_ids = [fav.route_id for fav in favorites]
+        routes_q = await session.execute(
+            select(Route).where(Route.id.in_(route_ids))
+        )
+        routes = routes_q.scalars().all()
+
+        # Выводим маршруты
+        await message.answer(f"📋 <b>Ваши сохранённые маршруты ({len(routes)})\n\n")
+
+        for route in routes:
+            # Получаем теги, сезоны и транспорт для маршрута
+            tags_q = await session.execute(
+                select(route_tags.c.tag).where(route_tags.c.route_id == route.id)
+            )
+            tags = [t[0] for t in tags_q.all()]
+
+            seasons_q = await session.execute(
+                select(route_seasons.c.season).where(route_seasons.c.route_id == route.id)
+            )
+            seasons = [s[0] for s in seasons_q.all()]
+
+            transports_q = await session.execute(
+                select(route_transports.c.transport).where(route_transports.c.route_id == route.id)
+            )
+            transports = [t[0] for t in transports_q.all()]
+
+            # Форматируем сезоны для отображения
+            season_names = {
+                "winter": "❄️ Зима",
+                "spring": "🌸 Весна",
+                "summer": "☀️ Лето",
+                "autumn": "🍁 Осень"
+            }
+            seasons_display = [season_names.get(s, s) for s in seasons]
+
+            # Создаем кнопку для удаления
+            remove_keyboard = InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(
+                        text="❌ Удалить из моих маршрутов",
+                        callback_data=f"remove_fav_{route.id}"
+                    )]
+                ]
+            )
+
+            message_text = (
+                f"🏔️<b>{route.title}</b>\n\n"
+                f"<i>{route.description}</i>\n\n"
+                f"📏 Длина: {route.length_km} км\n"
+                f"⚡ Сложность: {route.difficulty}\n"
+                f"💰 Цена: {route.price_estimate} руб\n"
+                f"📈 Популярность: {route.popularity}/100\n"
+                f"🏷️ Теги: {', '.join(tags)}\n"
+                f"📅 Сезоны: {', '.join(seasons_display)}\n"
+                f"🚗 Транспорт: {', '.join(transports)}"
+            )
+
+            if route.link:
+                actual_link = route.link
+                if isinstance(actual_link, list) and len(actual_link) > 0:
+                    actual_link = actual_link[0]
+                if isinstance(actual_link, str) and actual_link.strip():
+                    if not actual_link.startswith(('http://', 'https://')):
+                        actual_link = 'https://' + actual_link
+                    message_text += f"\n🔗 <a href='{actual_link}'>Подробнее о маршруте</a>"
+
+            await message.answer(message_text, parse_mode='HTML',
+                                 disable_web_page_preview=False,
+                                 reply_markup=remove_keyboard)
 
 @router.message(lambda m: m.text == "Посмотреть предпочтения")
 async def view_preferences(message: types.Message):
@@ -227,6 +327,8 @@ async def collect_prefs(message: types.Message):
                 await message.answer("Сначала установите предпочтения через кнопку <i>'Установить предпочтения'</i>.")
                 return
 
+            q = await session.execute(select_user_by_tg(session, message.from_user.id))
+            user = q.scalars().first()
             recs = await recommend_routes(session, prefs, limit=10)
             logs = []
             if not recs:
@@ -236,7 +338,18 @@ async def collect_prefs(message: types.Message):
             for r in recs:
                 route = r["route"]
                 score = r["score"]
+                is_favorite = await is_route_favorite(session, user.id, route["id"])
+                favorite_button_text = "❌ Удалить из моих маршрутов" if is_favorite else "❤️ Добавить в мои маршруты"
+                favorite_button_data = f"remove_fav_{route['id']}" if is_favorite else f"add_fav_{route['id']}"
 
+                favorite_keyboard = InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [InlineKeyboardButton(
+                            text=favorite_button_text,
+                            callback_data=favorite_button_data
+                        )]
+                    ]
+                )
                 link = route.get('link')
 
                 if link:
@@ -263,7 +376,9 @@ async def collect_prefs(message: types.Message):
                     f"{link_text}"
                 )
 
-                await message.answer(message_text, parse_mode='HTML', disable_web_page_preview=False)
+                await message.answer(message_text, parse_mode='HTML',
+                                     disable_web_page_preview=False,
+                                     reply_markup=favorite_keyboard)
 
             await message.answer("🗺️ <b>ТОП-10 МАРШРУТОВ</b> 🗺️\n\n" + "\n".join(logs), parse_mode='HTML')
             return
@@ -425,3 +540,99 @@ async def reset_preferences(callback: types.CallbackQuery):
             " ☑️ Все предпочтения успешно сброшены❕\n\nВы можете установить новые предпочтения через кнопку <i>'Установить предпочтения'</i>.",
             reply_markup=None)
         await callback.answer()
+
+
+async def is_route_favorite(session, user_id: int, route_id: int) -> bool:
+    q = await session.execute(
+        select(Favorite).where(
+            Favorite.user_id == user_id,
+            Favorite.route_id == route_id
+        )
+    )
+    return q.scalars().first() is not None
+
+
+@router.callback_query(lambda c: c.data and c.data.startswith("add_fav_"))
+async def add_to_favorites(callback: types.CallbackQuery):
+    route_id = int(callback.data.split("_")[2])
+
+    async with AsyncSessionLocal() as session:
+        # Получаем пользователя
+        q = await session.execute(select_user_by_tg(session, callback.from_user.id))
+        user = q.scalars().first()
+
+        if not user:
+            await callback.answer("Пользователь не найден")
+            return
+
+        # Проверяем, не добавлен ли уже маршрут
+        existing_q = await session.execute(
+            select(Favorite).where(
+                Favorite.user_id == user.id,
+                Favorite.route_id == route_id
+            )
+        )
+        existing = existing_q.scalars().first()
+
+        if existing:
+            await callback.answer("Маршрут уже в избранном")
+            return
+
+        # Добавляем в избранное
+        favorite = Favorite(user_id=user.id, route_id=route_id)
+        session.add(favorite)
+        await session.commit()
+
+        await callback.answer("✅ Маршрут добавлен в избранное")
+
+        # Обновляем кнопку
+        favorite_keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(
+                    text="❌ Удалить из моих маршрутов",
+                    callback_data=f"remove_fav_{route_id}"
+                )]
+            ]
+        )
+
+        await callback.message.edit_reply_markup(reply_markup=favorite_keyboard)
+
+
+# Обработчик для удаления маршрута из избранного
+@router.callback_query(lambda c: c.data and c.data.startswith("remove_fav_"))
+async def remove_from_favorites(callback: types.CallbackQuery):
+    route_id = int(callback.data.split("_")[2])
+
+    async with AsyncSessionLocal() as session:
+        # Получаем пользователя
+        q = await session.execute(select_user_by_tg(session, callback.from_user.id))
+        user = q.scalars().first()
+
+        if not user:
+            await callback.answer("Пользователь не найден")
+            return
+
+        # Удаляем из избранного
+        await session.execute(
+            delete(Favorite).where(
+                Favorite.user_id == user.id,
+                Favorite.route_id == route_id
+            )
+        )
+        await session.commit()
+
+        await callback.answer("❌ Маршрут удален из избранного")
+
+        # Обновляем кнопку
+        favorite_keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(
+                    text="❤️ Добавить в мои маршруты",
+                    callback_data=f"add_fav_{route_id}"
+                )]
+            ]
+        )
+
+        await callback.message.edit_reply_markup(reply_markup=favorite_keyboard)
+
+

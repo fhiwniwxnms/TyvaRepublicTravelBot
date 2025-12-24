@@ -1,5 +1,5 @@
 from sqlalchemy.orm import declarative_base
-from sqlalchemy import Table, Column, Integer, String, Text, Float, ForeignKey
+from sqlalchemy import Table, Column, Integer, String, Text, Float, ForeignKey, UniqueConstraint
 
 Base = declarative_base()
 
@@ -55,3 +55,13 @@ class Route(Base):
             "link": self.link,
             "popularity": self.popularity,
         }
+
+
+class Favorite(Base):
+    __tablename__ = "favorites"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    route_id = Column(Integer, ForeignKey("routes.id"), nullable=False)
+
+    # Уникальная пара user_id + route_id
+    __table_args__ = (UniqueConstraint('user_id', 'route_id', name='unique_user_route'),)

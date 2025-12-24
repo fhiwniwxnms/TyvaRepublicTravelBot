@@ -5,6 +5,7 @@ main_menu = ReplyKeyboardMarkup(
         [KeyboardButton(text="Установить предпочтения")],
         [KeyboardButton(text="Посмотреть предпочтения")],
         [KeyboardButton(text="Найти маршруты")],
+        [KeyboardButton(text="Мои маршруты")],
     ],
     resize_keyboard=True,
 )
@@ -91,3 +92,4 @@ reset_choice_keyboard = InlineKeyboardMarkup(
             InlineKeyboardButton(text="✅ Продолжить с текущими", callback_data="continue_current"),        ]
     ]
 )
+
